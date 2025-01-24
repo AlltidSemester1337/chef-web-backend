@@ -6,14 +6,22 @@ import reflex as rx
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession, GenerationResponse
 
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
-# TODO Deploy v1.1! Remember secure with PW from this point forward.
+
 class State(rx.State):
     # The current question being asked.
     question: str
 
     # Keep track of the chat history as a list of (question, answer) tuples.
     chat_history: list[tuple[str, str]]
+
+    def check_token(self, token):
+        return token == ACCESS_TOKEN
+
+    def on_page_load(self):
+        if not self.check_token(self.router.page.full_raw_path.split("=")[1]):
+            return rx.redirect("/access_denied")
 
     @rx.event
     async def answer(self):

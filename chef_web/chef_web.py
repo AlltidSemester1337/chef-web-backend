@@ -55,5 +55,10 @@ def index() -> rx.Component:
     )
 
 
+@rx.page(route="/access_denied", title="Access Denied")
+def access_denied() -> rx.Component:
+    return rx.text("Invalid token")
+
+
 app = rx.App()
-app.add_page(index)
+app.add_page(index, on_load=State.on_page_load)
