@@ -3,3 +3,5 @@ assets/external/
 *.db
 *.py[cod]
 .web
+google-services.json
+venv/

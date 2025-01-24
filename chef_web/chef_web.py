@@ -4,18 +4,16 @@ import reflex as rx
 from chef_web import style
 from chef_web.state import State
 
-from rxconfig import config
-
 
 def qa(question: str, answer: str) -> rx.Component:
     return rx.box(
         rx.box(
             rx.text(question, style=style.question_style),
-            text_align="right",
+            text_align="left",
         ),
         rx.box(
             rx.text(answer, style=style.answer_style),
-            text_align="left",
+            text_align="right",
         ),
         margin_y="1em",
         width="100%",
