@@ -1,4 +1,5 @@
 # state.py
+import logging
 import os
 from typing import AsyncIterable
 
@@ -20,7 +21,12 @@ class State(rx.State):
         return token == ACCESS_TOKEN
 
     def on_page_load(self):
-        if not self.check_token(self.router.page.full_raw_path.split("=")[1]):
+        try:
+            token = self.router.page.full_raw_path.split("=")[1]
+            if not self.check_token(token):
+                return rx.redirect("/access_denied")
+        except Exception as e:
+            logging.warning(f"Error: {e}", exc_info=True)
             return rx.redirect("/access_denied")
 
     @rx.event

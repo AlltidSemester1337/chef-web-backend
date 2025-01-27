@@ -34,14 +34,14 @@ docker buildx build --platform linux/amd64 -t $TAG .
 
 docker push $TAG
 
-gcloud run deploy chef-web-backend --image $TAG --platform managed --memory 2Gi --region europe-north1
---allow-unauthenticated
+gcloud run deploy chef-web-backend --image $TAG --platform managed --memory 2Gi --region europe-north1 \
+--allow-unauthenticated --update-env-vars ACCESS_TOKEN=$ACCESS_TOKEN --service-account $SERVICE_ACCOUNT
 
 # FRONTEND:
 
-(grab service url)
+SERVICE_URL=<grab backend service url>
 
-API_URL=<SERVICE_URL> reflex export --frontend-only
+API_URL=$SERVICE_URL reflex export --frontend-only
 
 Upload zip, extract
 
