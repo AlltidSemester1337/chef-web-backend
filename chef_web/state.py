@@ -6,7 +6,10 @@ from typing import AsyncIterable
 import reflex as rx
 import vertexai
 from vertexai.generative_models import GenerativeModel, ChatSession, GenerationResponse
+from firebase_admin import db
+import json
 
+CHAT_HISTORY_KEY = "chatHistory"
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 
@@ -16,6 +19,22 @@ class State(rx.State):
 
     # Keep track of the chat history as a list of (question, answer) tuples.
     chat_history: list[tuple[str, str]]
+
+    # Function to fetch chat history from Firebase
+    @staticmethod
+    def load_history() -> list[tuple[str, str]]:
+        ref = db.reference(CHAT_HISTORY_KEY)
+        chat_data = ref.get()
+        if chat_data:
+            chat_history = list(chat_data.items())
+            res = []
+            # Format timestamps for display
+            for i in range(0, len(chat_history), 2):
+                question = json.loads(chat_history[i][1])["parts"][0]["text"]
+                answer = json.loads(chat_history[i + 1][1])["parts"][0]["text"]
+                res += (question, answer),
+            return res
+        return []
 
     def check_token(self, token):
         return token == ACCESS_TOKEN
@@ -28,6 +47,7 @@ class State(rx.State):
         except Exception as e:
             logging.warning(f"Error: {e}", exc_info=True)
             return rx.redirect("/access_denied")
+        self.chat_history = self.load_history()
 
     @rx.event
     async def answer(self):

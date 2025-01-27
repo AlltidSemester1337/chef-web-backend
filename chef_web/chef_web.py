@@ -1,8 +1,13 @@
 """Welcome to Reflex! This file outlines the steps to create a basic app."""
+import os
 
+import firebase_admin
 import reflex as rx
+
 from chef_web import style
 from chef_web.state import State
+
+FIREBASE_URL = os.getenv("FIREBASE_URL")
 
 
 def qa(question: str, answer: str) -> rx.Component:
@@ -59,6 +64,10 @@ def index() -> rx.Component:
 def access_denied() -> rx.Component:
     return rx.text("Invalid token")
 
+
+firebase_admin.initialize_app(options={
+    "databaseURL": FIREBASE_URL
+})
 
 app = rx.App()
 app.add_page(index, on_load=State.on_page_load)
