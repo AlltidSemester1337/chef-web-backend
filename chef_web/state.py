@@ -30,9 +30,12 @@ class State(rx.State):
             res = []
             # Format timestamps for display
             for i in range(0, len(chat_history), 2):
-                question = json.loads(chat_history[i][1])["parts"][0]["text"]
-                answer = json.loads(chat_history[i + 1][1])["parts"][0]["text"]
-                res += (question, answer),
+                question_value = chat_history[i][1]
+                answer_value = chat_history[i + 1][1]
+                if question_value and answer_value:
+                    question = json.loads(question_value)["parts"][0]["text"]
+                    answer = json.loads(answer_value)["parts"][0]["text"]
+                    res += (question, answer),
             return res
         return []
 
@@ -79,6 +82,7 @@ class State(rx.State):
         chat_session = model.start_chat()
 
         # Add to the answer as the chatbot responds.
+        original_question = self.question
         answer = ""
         self.chat_history.append((self.question, answer))
 
@@ -87,7 +91,6 @@ class State(rx.State):
         self.question = ""
         # Yield here to clear the frontend input before continuing.
         yield
-
         async for chunk in session:
             answer += chunk.text
             self.chat_history[-1] = (
@@ -95,6 +98,24 @@ class State(rx.State):
                 answer,
             )
             yield
+
+        # Save to Firebase after the response is complete
+        if original_question and answer:  # Ensure there's an question + answer to save
+            ref = db.reference(CHAT_HISTORY_KEY)
+
+            # TODO look further into tx issues, or how to deal with potential corruption?
+            ref.push().set(json.dumps({
+                "parts": [
+                    {"text": original_question},
+                ],
+                "role": "user",
+            }))
+            ref.push().set(json.dumps({
+                "parts": [
+                    {"text": answer},
+                ],
+                "role": "model",
+            }))
 
     async def stream_response(self, chat: ChatSession, question: str) -> AsyncIterable[GenerationResponse]:
         for chunk in chat.send_message(question, stream=True):

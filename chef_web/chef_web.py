@@ -30,7 +30,8 @@ def chat() -> rx.Component:
         rx.foreach(
             State.chat_history,
             lambda messages: qa(messages[0], messages[1]),
-        )
+        ),
+        rx.script("setTimeout(() => {window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}, 1000)"),
     )
 
 
