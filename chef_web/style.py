@@ -1,5 +1,6 @@
 # style.py
 import reflex as rx
+from docutils.parsers.rst.directives.tables import align
 
 # Common styles for questions and answers.
 shadow = "rgba(0, 0, 0, 0.15) 0px 2px 8px"
@@ -33,4 +34,28 @@ input_style = dict(
 button_style = dict(
     background_color=rx.color("accent", 10),
     box_shadow=shadow,
+)
+# Style for title in detail views
+title_style = dict(
+    background_image="linear-gradient(271.68deg, #EE756A 0.75%, #756AEE 88.52%)",
+    background_clip="text",
+    font_weight="bold",
+    font_size="2em",
+    padding="1em",
+    border_radius="5px",
+    margin_y="0.5em",
+    box_shadow=shadow,
+    display="inline-block",
+)
+# Style for summary / subtitle in detail views
+summary_style = dict(
+    background_image="linear-gradient(271.68deg, #EE756A 0.75%, #756AEE 88.52%)",
+    background_clip="text",
+    display="inline-block",
+    font_size="1.2em",
+)
+
+# Style for text in detail views
+detail_text_style = summary_style | dict(
+    font_size="1em",
 )

@@ -17,11 +17,25 @@ def qa(question: str, answer: str) -> rx.Component:
             text_align="left",
         ),
         rx.box(
-            rx.text(answer, style=style.answer_style),
-            text_align="right",
-        ),
-        margin_y="1em",
-        width="100%",
+            rx.text(answer),
+            rx.flex(rx.icon(
+                "star",
+                on_click=State.add_to_favourites(answer),
+                color_scheme="gray",
+                color=rx.cond(
+                    State.favourites.contains(answer), "yellow", "gray"
+                ),
+                justify="end",
+                align="end",
+                width="100%"
+            ),
+                width="100%",
+                text_align="right",
+            ),
+            style=style.answer_style,
+            margin_y="1em",
+            width="100%",
+        )
     )
 
 
@@ -66,9 +80,115 @@ def access_denied() -> rx.Component:
     return rx.text("Invalid token")
 
 
+def recipe() -> rx.Component:
+    return rx.center(
+        rx.vstack(
+            recipe_detail(),
+            align="center",
+        )
+    )
+
+
+def recipe_detail() -> rx.Component:
+    return rx.box(
+        rx.cond(
+            State.selected_recipe != None,  # If a recipe is loaded...
+            rx.box(
+                # Display the recipe title.
+                rx.center(rx.text(State.selected_recipe.title, style=style.title_style)),
+                # If there's an image URL, display the image.
+                rx.cond(
+                    State.selected_recipe.image_url != None,
+                    rx.center(rx.image(State.selected_recipe.image_url, align="center")),
+                    rx.box()
+                ),
+                rx.html("<br>"),
+                # Display the summary.
+                rx.center(format_text(text=State.selected_recipe.summary, text_style=style.summary_style)),
+                rx.html("<br>"),
+                # Toggle buttons for ingredients and instructions.
+                rx.hstack(
+                    rx.button(
+                        "Ingredients",
+                        on_click=State.toggle_view,
+                        width="100px"
+                    ),
+                    rx.button(
+                        "Instructions",
+                        on_click=State.toggle_view,
+                        width="100px"
+                    ),
+                    justify="center",
+                    align="center",
+                    width="100%"
+                ),
+                rx.html("<br>"),
+                # Conditionally display ingredients or instructions.
+                rx.cond(
+                    State.show_ingredients,
+                    format_text(text=State.selected_recipe.ingredients),
+                    format_text(text=State.selected_recipe.instructions)
+                ),
+                padding="1em"
+            ),
+            # Else: if no recipe is found
+            rx.text("No recipe with matching ID found. Make sure to include id=<recipe_id> in the URL.")
+        ),
+        width="100%"
+    )
+
+
+# TODO This is not really the right place to solve this, perhaps rethink line break handling
+def format_text(text: str, text_style: style = style.detail_text_style) -> rx.Component:
+    """Splits text by newlines and returns an rx.box with individual text components."""
+    return rx.box(
+        rx.foreach(
+            text.split("\n"),
+            lambda line: rx.cond(line == "",
+                                 rx.box()
+                                 ,
+                                 rx.box(
+                                     rx.text(line, style=text_style),
+                                     rx.html("<br>"),
+                                 )
+                                 )
+        ),
+        align="start"
+    )
+
+
+def recipes() -> rx.Component:
+    return rx.center(rx.box(
+        rx.text("Favourite recipes", style=style.title_style),
+        rx.cond(State.favourites_recipes_list,
+
+                rx.vstack(
+                    rx.foreach(
+                        State.favourites_recipes_list,
+                        lambda fav_recipe: recipe_list_item(fav_recipe.id, fav_recipe.title),
+                    ),
+                    align="center",
+                    width="100%",  # Ensure full width for centering
+                    spacing="1",  # Add spacing between items
+                )
+                ,
+                rx.text("No recipes found, go create and star some!"))
+    ))
+
+
+def recipe_list_item(id: str, title: str) -> rx.Component:
+    return rx.box(
+        rx.text(title, style=style.summary_style),
+        on_click=State.redirect_to_recipe(id),
+        style=style.answer_style,
+    )
+
+
 firebase_admin.initialize_app(options={
     "databaseURL": FIREBASE_URL
 })
 
 app = rx.App()
 app.add_page(index, on_load=State.on_page_load)
+app.add_page(recipe, on_load=State.load_recipe)
+app.add_page(recipes, on_load=State.load_recipes_list)
