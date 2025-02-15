@@ -3,7 +3,7 @@
 Web version of [app](https://github.com/AlltidSemester1337/chef) built using reflex.dev, deployed as backend only on
 cloud run (frontend hosted statically on WP web server).
 
-Try it live at [demo](https://humlekotte.nu/chef-web/)!
+Try it live at [demo](https://humlekotte.nu/chef-web/recipes)!
 Access token for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
 section at the bottom.
 
@@ -17,7 +17,8 @@ docs. A SA with access to firebase / realtimedb is required to run.
 Features:
 
 - 1.0.5 - Migrated features from app to web version
-- After this versions will be bumped to sync w app as features are released.
+- 1.6.0 - Added Collections feature
+Refer to [app](https://github.com/AlltidSemester1337/chef) for future versions plan.
 
 ## Demo v1.0.5 release
 

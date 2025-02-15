@@ -204,14 +204,13 @@ class State(rx.State):
 
     def derive_recipe_ingredients(self, answer: str, title: str, summary: str) -> str | None:
         """Derive the ingredients from the chatbot response."""
-        # TODO Try to create list using \n? Maybe but think about benefits / downside on the collection recipe details page
         ingredients = answer.split("**Instructions:**")[0].replace(title, "").replace(summary, "").replace("##  \n\n",
-                                                                                                           "")
+                                                                                                           "").replace(
+            "**Ingredients:**\n\n", "")
         return ingredients
 
     def derive_recipe_instructions(self, answer: str) -> str | None:
         """Derive the instructions from the chatbot response."""
-        # TODO Try to create list using \n? Maybe but think about benefits / downside on the collection recipe details page
         instructions = answer.split("**Instructions:**")[1].replace("\n\n", "")
         return instructions
 
@@ -229,7 +228,7 @@ class State(rx.State):
             # mime_type="image/jpeg",
         )
 
-        local_file_path = "tmp/output.jpg"
+        local_file_path = os.getcwd() + "/tmp/output.jpg"
         images[0].save(local_file_path, False)
         # TODO After upload should clear tmp
         return self.upload_image_to_gcs(project_id, local_file_path)
@@ -257,6 +256,7 @@ class State(rx.State):
         # Create a new blob and upload the file's content.
         blob = bucket.blob(f"recipes/{uuid.uuid4()}")
         blob.upload_from_filename(local_file_path)
+        blob.make_public()
         return blob.public_url
 
     def is_in_favourites(self, answer: str) -> bool:

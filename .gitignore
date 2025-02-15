@@ -5,3 +5,5 @@ assets/external/
 .web
 google-services.json
 venv/
+tmp/*
+frontend.zip

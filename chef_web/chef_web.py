@@ -10,6 +10,75 @@ from chef_web.state import State
 FIREBASE_URL = os.getenv("FIREBASE_URL")
 
 
+def navbar_link(text: str, url: str) -> rx.Component:
+    return rx.link(
+        rx.text(text, size="4", weight="medium"), href=url
+    )
+
+
+def navbar() -> rx.Component:
+    return rx.box(
+        rx.desktop_only(
+            rx.hstack(
+                rx.hstack(
+                    #rx.image(
+                        #src="/res/logo.jpg",
+                        #width="2.25em",
+                        #height="auto",
+                        #border_radius="25%",
+                    #),
+                    rx.heading(
+                        "Chef", size="7", weight="bold"
+                    ),
+                    align_items="center",
+                ),
+                rx.hstack(
+                    navbar_link("Generate new recipes!", "/"),
+                    navbar_link("View favourites", "/recipes"),
+                    justify="end",
+                    spacing="5",
+                ),
+                justify="between",
+                align_items="center",
+            ),
+        ),
+        rx.mobile_and_tablet(
+            rx.hstack(
+                rx.hstack(
+                    #rx.image(
+                        #src="/res/logo.jpg",
+                        #width="2em",
+                        #height="auto",
+                        #border_radius="25%",
+                    #),
+                    rx.heading(
+                        "Chef", size="6", weight="bold"
+                    ),
+                    align_items="center",
+                ),
+                rx.menu.root(
+                    rx.menu.trigger(
+                        rx.icon("menu", size=30)
+                    ),
+                    rx.menu.content(
+                        rx.menu.item("Generate new recipes!"),
+                        rx.menu.item("View favourites"),
+                    ),
+                    justify="end",
+                ),
+                justify="between",
+                align_items="center",
+            ),
+        ),
+        bg=rx.color("accent", 3),
+        padding="1em",
+        width="100%",
+        position="fixed",
+        top="0",
+        z_index="1000",
+    )
+
+
 def qa(question: str, answer: str) -> rx.Component:
     return rx.box(
         rx.box(
@@ -66,27 +135,30 @@ def action_bar() -> rx.Component:
 
 
 def index() -> rx.Component:
-    return rx.center(
-        rx.vstack(
-            chat(),
-            action_bar(),
-            align="center",
-        )
-    )
+    return rx.box(navbar(),
+                  rx.center(
+                      rx.vstack(
+                          chat(),
+                          action_bar(),
+                          align="center",
+                      )
+                  ))
 
 
 @rx.page(route="/access_denied", title="Access Denied")
 def access_denied() -> rx.Component:
-    return rx.text("Invalid token")
+    return rx.box(navbar(),
+                  rx.text("Invalid token"))
 
 
 def recipe() -> rx.Component:
-    return rx.center(
-        rx.vstack(
-            recipe_detail(),
-            align="center",
-        )
-    )
+    return rx.box(navbar(),
+                  rx.center(
+                      rx.vstack(
+                          recipe_detail(),
+                          align="center",
+                      )
+                  ))
 
 
 def recipe_detail() -> rx.Component:
@@ -158,22 +230,23 @@ def format_text(text: str, text_style: style = style.detail_text_style) -> rx.Co
 
 
 def recipes() -> rx.Component:
-    return rx.center(rx.box(
-        rx.text("Favourite recipes", style=style.title_style),
-        rx.cond(State.favourites_recipes_list,
+    return rx.box(navbar(),
+                  rx.center(rx.box(
+                      rx.text("Favourite recipes", style=style.title_style),
+                      rx.cond(State.favourites_recipes_list,
 
-                rx.vstack(
-                    rx.foreach(
-                        State.favourites_recipes_list,
-                        lambda fav_recipe: recipe_list_item(fav_recipe.id, fav_recipe.title),
-                    ),
-                    align="center",
-                    width="100%",  # Ensure full width for centering
-                    spacing="1",  # Add spacing between items
-                )
-                ,
-                rx.text("No recipes found, go create and star some!"))
-    ))
+                              rx.vstack(
+                                  rx.foreach(
+                                      State.favourites_recipes_list,
+                                      lambda fav_recipe: recipe_list_item(fav_recipe.id, fav_recipe.title),
+                                  ),
+                                  align="center",
+                                  width="100%",  # Ensure full width for centering
+                                  spacing="1",  # Add spacing between items
+                              )
+                              ,
+                              rx.text("No recipes found, go create and star some!"))
+                  )))
 
 
 def recipe_list_item(id: str, title: str) -> rx.Component:
