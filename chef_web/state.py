@@ -19,6 +19,7 @@ from chef_web.model.recipe import Recipe
 CHAT_HISTORY_KEY = "chatHistory"
 FAVOURITES_KEY = "favourites"
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+PROJECT_ID = os.getenv("PROJECT_ID")
 
 
 class State(rx.State):
@@ -73,11 +74,10 @@ class State(rx.State):
 
     @rx.event
     async def answer(self):
-        project_id = os.getenv("PROJECT_ID")
         location = "europe-north1"
 
         vertexai.init(
-            project=project_id,
+            project=PROJECT_ID,
             location=location,
         )
 
@@ -215,7 +215,6 @@ class State(rx.State):
         return instructions
 
     def generate_image_for_recipe(self, answer: str) -> str | None:
-        project_id = os.getenv("PROJECT_ID")
         prompt = f"As a professional photographer specializing in 100mm Macro lens natural lightning food photography, please create a photorealistic, colorful, visually appealing image for use in a recipe collection webpage of a single serving for the following recipe: {answer}"
         model = ImageGenerationModel.from_pretrained("imagen-3.0-generate-002")
 
@@ -231,14 +230,13 @@ class State(rx.State):
         local_file_path = os.getcwd() + "/tmp/output.jpg"
         images[0].save(local_file_path, False)
         # TODO After upload should clear tmp
-        return self.upload_image_to_gcs(project_id, local_file_path)
+        return self.upload_image_to_gcs(local_file_path)
 
-    def upload_image_to_gcs(self, project_id: str, local_file_path: str) -> str:
+    def upload_image_to_gcs(self, local_file_path: str) -> str:
         """
             Uploads a file to Firebase Storage and returns its public URL.
 
             Args:
-                project_id (str): Your GCP project ID.
                 local_file (str): Path to the local file you want to upload.
                 destination_blob_name (str): The destination path within the bucket (e.g., "recipes/output.jpg").
 
@@ -246,11 +244,11 @@ class State(rx.State):
                 str: The public URL of the uploaded file.
             """
         # Initialize a Cloud Storage client
-        storage_client = storage.Client(project=project_id)
+        storage_client = storage.Client(project=PROJECT_ID)
 
         # Set the bucket name.
         # Verify your bucket name in your Firebase Console.
-        bucket_name = f"{project_id}.firebasestorage.app"
+        bucket_name = f"{PROJECT_ID}.firebasestorage.app"
         bucket = storage_client.get_bucket(bucket_name)
 
         # Create a new blob and upload the file's content.

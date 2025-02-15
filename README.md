@@ -18,7 +18,7 @@ Features:
 
 - 1.0.5 - Migrated features from app to web version
 - 1.6.0 - Added Collections feature
-Refer to [app](https://github.com/AlltidSemester1337/chef) for future versions plan.
+  Refer to [app](https://github.com/AlltidSemester1337/chef) for future versions plan.
 
 ## Demo v1.0.5 release
 
@@ -39,7 +39,7 @@ docker buildx build --platform linux/amd64 -t $TAG .
 docker push $TAG
 
 gcloud run deploy chef-web-backend --image $TAG --platform managed --memory 2Gi --region europe-north1 \
---allow-unauthenticated --update-env-vars ACCESS_TOKEN=$ACCESS_TOKEN,FIREBASE_URL=$FIREBASE_URL \
+--allow-unauthenticated --update-env-vars ACCESS_TOKEN=$ACCESS_TOKEN,FIREBASE_URL=$FIREBASE_URL,PROJECT_ID=$PROJECT_ID \
 --service-account $SERVICE_ACCOUNT
 
 # FRONTEND:
