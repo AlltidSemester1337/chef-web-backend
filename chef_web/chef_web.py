@@ -21,12 +21,12 @@ def navbar() -> rx.Component:
         rx.desktop_only(
             rx.hstack(
                 rx.hstack(
-                    #rx.image(
-                        #src="/res/logo.jpg",
-                        #width="2.25em",
-                        #height="auto",
-                        #border_radius="25%",
-                    #),
+                    # rx.image(
+                    # src="/res/logo.jpg",
+                    # width="2.25em",
+                    # height="auto",
+                    # border_radius="25%",
+                    # ),
                     rx.heading(
                         "Chef", size="7", weight="bold"
                     ),
@@ -45,12 +45,12 @@ def navbar() -> rx.Component:
         rx.mobile_and_tablet(
             rx.hstack(
                 rx.hstack(
-                    #rx.image(
-                        #src="/res/logo.jpg",
-                        #width="2em",
-                        #height="auto",
-                        #border_radius="25%",
-                    #),
+                    # rx.image(
+                    # src="/res/logo.jpg",
+                    # width="2em",
+                    # height="auto",
+                    # border_radius="25%",
+                    # ),
                     rx.heading(
                         "Chef", size="6", weight="bold"
                     ),
@@ -92,7 +92,7 @@ def qa(question: str, answer: str) -> rx.Component:
                 on_click=State.add_to_favourites(answer),
                 color_scheme="gray",
                 color=rx.cond(
-                    State.favourites.contains(answer), "yellow", "gray"
+                    State.answers_in_favourites[answer], "yellow", "gray"
                 ),
                 justify="end",
                 align="end",
@@ -210,7 +210,7 @@ def recipe_detail() -> rx.Component:
     )
 
 
-# TODO This is not really the right place to solve this, perhaps rethink line break handling
+# TODO This is not really the right place to solve this, perhaps rethink line break handling. Await Bobo design anyway
 def format_text(text: str, text_style: style = style.detail_text_style) -> rx.Component:
     """Splits text by newlines and returns an rx.box with individual text components."""
     return rx.box(
@@ -262,6 +262,6 @@ firebase_admin.initialize_app(options={
 })
 
 app = rx.App()
-app.add_page(index, on_load=State.on_page_load)
+app.add_page(index, on_load=State.check_access_token)
 app.add_page(recipe, on_load=State.load_recipe)
 app.add_page(recipes, on_load=State.load_recipes_list)

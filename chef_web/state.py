@@ -21,6 +21,8 @@ FAVOURITES_KEY = "favourites"
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 PROJECT_ID = os.getenv("PROJECT_ID")
 
+log = logging.getLogger(__name__)
+
 
 class State(rx.State):
     # The current question being asked.
@@ -29,9 +31,6 @@ class State(rx.State):
     # Keep track of the chat history as a list of (question, answer) tuples.
     chat_history: list[tuple[str, str]]
 
-    # TODO List of favourite recipes, should be updated to use recipes_list instead in future version
-    favourites: list[str] = list()
-
     # state to track selected recipe on detail page
     selected_recipe: Recipe | None = None
     # Boolean to track which view to show on detail page.
@@ -39,10 +38,10 @@ class State(rx.State):
 
     # List of all favourite recipes
     favourites_recipes_list: list[Recipe]
+    answers_in_favourites: dict[str, bool] = {}
 
     # Function to fetch chat history from Firebase
-    @staticmethod
-    def load_history() -> list[tuple[str, str]]:
+    def load_history(self) -> list[tuple[str, str]]:
         ref = db.reference(CHAT_HISTORY_KEY)
         chat_data = ref.get()
         if chat_data:
@@ -55,6 +54,8 @@ class State(rx.State):
                 if question_value and answer_value:
                     question = json.loads(question_value)["parts"][0]["text"]
                     answer = json.loads(answer_value)["parts"][0]["text"]
+                    if self.answer_is_in_favourites(answer):
+                        self.answers_in_favourites[answer] = True
                     res += (question, answer),
             return res
         return []
@@ -62,14 +63,15 @@ class State(rx.State):
     def check_token(self, token):
         return token == ACCESS_TOKEN
 
-    def on_page_load(self):
+    async def check_access_token(self):
         try:
             token = self.router.page.full_raw_path.split("=")[1]
             if not self.check_token(token):
                 return rx.redirect("/access_denied")
         except Exception as e:
-            logging.warning(f"Error: {e}", exc_info=True)
+            log.warning(f"Error: {e}", exc_info=True)
             return rx.redirect("/access_denied")
+        await self.load_recipes_list()
         self.chat_history = self.load_history()
 
     @rx.event
@@ -95,7 +97,7 @@ class State(rx.State):
             "top_p": 0.95,
         }
 
-        model = GenerativeModel("gemini-1.5-flash-002", generation_config=parameters,
+        model = GenerativeModel("gemini-2.0-flash-001", generation_config=parameters,
                                 system_instruction=system_instruction)
 
         chat_session = model.start_chat()
@@ -145,28 +147,24 @@ class State(rx.State):
 
     @rx.event
     async def add_to_favourites(self, answer: str):
-        # TODO else self.favourites.remove(answer)
         """Add the selected recipe to the Firebase 'favourites' table."""
-
-        ref = db.reference(FAVOURITES_KEY)
-        title, summary, ingredients, instructions = None, None, None, None
         try:
             title = self.derive_recipe_title(answer)
             summary = self.derive_recipe_summary(answer, title=title)
             ingredients = self.derive_recipe_ingredients(answer, title=title, summary=summary)
             instructions = self.derive_recipe_instructions(answer)
         except Exception as e:
-            logging.warning(f"Error derive details from recipe: {e}", exc_info=True)
+            log.warning(f"Error derive details from recipe: {e}", exc_info=True)
             return
 
-        if not title and summary and ingredients and instructions:
-            logging.warning(f"Failed to derive details from recipe: {answer}")
+        if await self.title_is_in_favourites(title):
+            log.debug(f"Recipe already in favourites: {title}")
             return
 
         try:
             image_url = self.generate_image_for_recipe(answer)
         except Exception as e:
-            logging.warning(f"Error generating image for recipe: {e}", exc_info=True)
+            log.warning(f"Error generating image for recipe: {e}", exc_info=True)
             image_url = None
 
         updatedAt = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
@@ -180,21 +178,31 @@ class State(rx.State):
             "imageUrl": image_url,
             "updatedAt": updatedAt,
         }
+        ref = db.reference(FAVOURITES_KEY)
 
         try:
             # Push recipe entry to Firebase
             new_ref = ref.push()
             recipe_entry["id"] = new_ref.key
             new_ref.set(json.dumps(recipe_entry))
-            # TODO Add a success message to the frontend? Or open detail window automatically? Consult with Bobo
-            print("Recipe saved successfully!")  # Debugging
+            log.info("Recipe saved successfully!")  # Debugging
         except Exception as e:
-            logging.error(f"Error saving recipe: {e}", exc_info=True)
-        self.favourites.append(answer)
+            log.error(f"Error saving recipe: {e}", exc_info=True)
+        self.answers_in_favourites[answer] = True
+
+    def answer_is_in_favourites(self, answer: str) -> bool:
+        try:
+            title = self.derive_recipe_title(answer)
+        except Exception as _:
+            return False
+        return title in [recipe.title for recipe in self.favourites_recipes_list]
+
+    async def title_is_in_favourites(self, title: str) -> bool:
+        return title in [recipe.title for recipe in self.favourites_recipes_list]
 
     def derive_recipe_title(self, answer: str) -> str | None:
         """Derive the recipe title from the chatbot response."""
-        title = answer.split("\n\n")[0].replace("##  ", "")
+        title = answer.split("\n\n")[0].replace("##", "").lstrip()
         return title
 
     def derive_recipe_summary(self, answer: str, title: str) -> str | None:
@@ -223,14 +231,17 @@ class State(rx.State):
             # Optional parameters
             number_of_images=1,
             aspect_ratio="4:3",
-            # TODO Implement if google adds support for parametrizing to JPEG directly
-            # mime_type="image/jpeg",
         )
 
         local_file_path = os.getcwd() + "/tmp/output.jpg"
         images[0].save(local_file_path, False)
-        # TODO After upload should clear tmp
-        return self.upload_image_to_gcs(local_file_path)
+
+        public_url = self.upload_image_to_gcs(local_file_path)
+        try:
+            os.remove(local_file_path)
+        except Exception as e:
+            log.warning(f"Failed to remove tmp file: {e}", exc_info=True)
+        return public_url
 
     def upload_image_to_gcs(self, local_file_path: str) -> str:
         """
