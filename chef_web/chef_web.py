@@ -21,20 +21,18 @@ def navbar() -> rx.Component:
         rx.desktop_only(
             rx.hstack(
                 rx.hstack(
-                    # rx.image(
-                    # src="/res/logo.jpg",
-                    # width="2.25em",
-                    # height="auto",
-                    # border_radius="25%",
-                    # ),
+                    logo(),
                     rx.heading(
                         "Chef", size="7", weight="bold"
                     ),
+                    rx.cond(State.user, rx.text("Logged in as: " + State.user.email), rx.text("")),
                     align_items="center",
                 ),
                 rx.hstack(
                     navbar_link("Generate new recipes!", "/"),
                     navbar_link("View favourites", "/recipes"),
+                    rx.cond(State.user, rx.button("Log out", on_click=State.logout),
+                            rx.button("Log in", on_click=rx.redirect("/login"))),
                     justify="end",
                     spacing="5",
                 ),
@@ -71,11 +69,20 @@ def navbar() -> rx.Component:
             ),
         ),
         bg=rx.color("accent", 3),
-        padding="1em",
+        padding="0.5em",
         width="100%",
         position="fixed",
         top="0",
         z_index="1000",
+    )
+
+
+def logo():
+    return rx.image(
+        src="/chef-web/logo.jpg",
+        width="2.25em",
+        height="auto",
+        border_radius="25%",
     )
 
 
@@ -145,12 +152,6 @@ def index() -> rx.Component:
                   ))
 
 
-@rx.page(route="/access_denied", title="Access Denied")
-def access_denied() -> rx.Component:
-    return rx.box(navbar(),
-                  rx.text("Invalid token"))
-
-
 def recipe() -> rx.Component:
     return rx.box(navbar(),
                   rx.center(
@@ -215,8 +216,8 @@ def format_text(text: str, text_style: style = style.detail_text_style) -> rx.Co
     """Splits text by newlines and returns an rx.box with individual text components."""
     return rx.box(
         rx.foreach(
-            text.split("\n"),
-            lambda line: rx.cond(line == "",
+            text.split("\\n"),
+            lambda line: rx.cond(line.strip() == "",  # If line is empty
                                  rx.box()
                                  ,
                                  rx.box(
@@ -257,11 +258,66 @@ def recipe_list_item(id: str, title: str) -> rx.Component:
     )
 
 
+def login() -> rx.Component:
+    return rx.box(rx.cond(
+        State.redirect_to,  # If redirect URL is set
+        rx.script(f"window.location.href = '{State.redirect_to}';"),  # Perform client-side redirect
+        rx.box(navbar(), rx.center(rx.card(
+            rx.vstack(
+                rx.center(
+                    logo(),
+                    rx.heading(
+                        "Sign in to your Chef account",
+                        size="6",
+                        as_="h2",
+                        text_align="center",
+                        width="100%",
+                    ),
+                    direction="column",
+                    spacing="5",
+                    width="100%",
+                ),
+                rx.vstack(
+                    rx.text(
+                        "Email address",
+                        size="3",
+                        weight="medium",
+                        text_align="left",
+                        width="100%",
+                    ),
+                    rx.input(
+                        placeholder="email@email.com",
+                        on_blur=State.set_user_email,
+                        type="email",
+                        size="3",
+                        width="100%",
+                    ),
+                    justify="start",
+                    spacing="2",
+                    width="100%",
+                ),
+                rx.button("Sign in / Register", on_click=State.login_sign_up, size="3", width="100%"),
+                spacing="6",
+                width="100%",
+            ),
+            size="4",
+            max_width="28em",
+            width="100%",
+        )
+        ), height="100vh",  # Full viewport height
+               display="flex",
+               align_items="center",  # Vertical centering
+               justify_content="center",  # Horizontal centering
+               )
+    ))
+
+
 firebase_admin.initialize_app(options={
     "databaseURL": FIREBASE_URL
 })
 
 app = rx.App()
-app.add_page(index, on_load=State.check_access_token)
+app.add_page(index, on_load=State.check_user_permissions)
 app.add_page(recipe, on_load=State.load_recipe)
 app.add_page(recipes, on_load=State.load_recipes_list)
+app.add_page(login)

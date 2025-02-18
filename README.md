@@ -4,15 +4,14 @@ Web version of [app](https://github.com/AlltidSemester1337/chef) built using ref
 cloud run (frontend hosted statically on WP web server).
 
 Try it live at [demo](https://humlekotte.nu/chef-web/recipes)!
-Access token for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
+Registration for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
 section at the bottom.
 
 A personal cooking assistant app (Reflex.dev) to suggest recipes for cooking. Built on vertexai chat and
 firebase. Requires integration towards vertexai using SA in order to run.
-Also requires a firebaseDbUrl to be set in $FIREBASE_URL and $ACCESS_TOKEN when building the app to run.
 
 Run the app (backend) locally using reflex run --backend-only --backend-port 8080 or refer to Dockerfile and Reflex
-docs. A SA with access to firebase / realtimedb is required to run.
+docs. A SA with access to firebase is required to run.
 
 Features:
 
@@ -23,7 +22,7 @@ Features:
 ## Demo v1.0.5 release
 
 [Demo v1.0.5](https://humlekotte.nu/chef-web/)
-Access token for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
+Registration for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
 section at the bottom.
 
 ## Deployment
@@ -39,7 +38,8 @@ docker buildx build --platform linux/amd64 -t $TAG .
 docker push $TAG
 
 gcloud run deploy chef-web-backend --image $TAG --platform managed --memory 2Gi --region europe-north1 \
---allow-unauthenticated --update-env-vars ACCESS_TOKEN=$ACCESS_TOKEN,FIREBASE_URL=$FIREBASE_URL,PROJECT_ID=$PROJECT_ID \
+--allow-unauthenticated \
+--update-env-vars FIREBASE_URL=$FIREBASE_URL,PROJECT_ID=$PROJECT_ID,FIREBASE_WEB_API_KEY=$FIREBASE_WEB_API_KEY \
 --service-account $SERVICE_ACCOUNT
 
 # FRONTEND:
@@ -61,5 +61,5 @@ Fork or reach out to authors humlekottekonsult@gmail.com
 ## Support, feature request, question etc
 
 This project is owned and currently operated and maintained by [Humlekotte Konsultbolag](https://www.humlekotte.nu). Any
-questions or request access token for closed beta reach out via
+questions or request user for closed beta reach out via
 email [humlekottekonsult@gmail.com](mailto:humlekottekonsult@gmail.com)

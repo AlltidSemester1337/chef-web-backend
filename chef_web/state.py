@@ -14,11 +14,16 @@ from google.cloud import storage
 
 from vertexai.vision_models import ImageGenerationModel
 
+from chef_web.auth.auth_service import AuthService
 from chef_web.model.recipe import Recipe
+from chef_web.model.user import User
 
-CHAT_HISTORY_KEY = "chatHistory"
-FAVOURITES_KEY = "favourites"
-ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+# TODO Move to auth or firebase later
+ALLOWED_UIDS = ["fMo7MVYy3Sg7Q5VirSLQpX6H4OD2", "AuPP3gxW5fSjcxNB3NTQ9CVX9IJ2"]
+
+CHAT_HISTORY_KEY = "chat_history"
+USERS_KEY = "users"
+RECIPES_KEY = "recipes"
 PROJECT_ID = os.getenv("PROJECT_ID")
 
 log = logging.getLogger(__name__)
@@ -39,38 +44,33 @@ class State(rx.State):
     # List of all favourite recipes
     favourites_recipes_list: list[Recipe]
     answers_in_favourites: dict[str, bool] = {}
+    user_email: str | None = None
+    user: User | None = None
+    redirect_to: str | None = None
 
     # Function to fetch chat history from Firebase
     def load_history(self) -> list[tuple[str, str]]:
-        ref = db.reference(CHAT_HISTORY_KEY)
+        ref = db.reference(USERS_KEY + "/" + self.user.uid + "/" + CHAT_HISTORY_KEY)
         chat_data = ref.get()
         if chat_data:
             chat_history = list(chat_data.items())
             res = []
             # Format timestamps for display
             for i in range(0, len(chat_history), 2):
-                question_value = chat_history[i][1]
-                answer_value = chat_history[i + 1][1]
-                if question_value and answer_value:
-                    question = json.loads(question_value)["parts"][0]["text"]
-                    answer = json.loads(answer_value)["parts"][0]["text"]
+                question_entry = chat_history[i][1]
+                answer_entry = chat_history[i + 1][1]
+                if question_entry and answer_entry:
+                    question = question_entry.get("parts", [{}])[0].get("text", "")
+                    answer = answer_entry.get("parts", [{}])[0].get("text", "")
                     if self.answer_is_in_favourites(answer):
                         self.answers_in_favourites[answer] = True
                     res += (question, answer),
             return res
         return []
 
-    def check_token(self, token):
-        return token == ACCESS_TOKEN
-
-    async def check_access_token(self):
-        try:
-            token = self.router.page.full_raw_path.split("=")[1]
-            if not self.check_token(token):
-                return rx.redirect("/access_denied")
-        except Exception as e:
-            log.warning(f"Error: {e}", exc_info=True)
-            return rx.redirect("/access_denied")
+    async def check_user_permissions(self):
+        if self.user is None or self.user.uid not in ALLOWED_UIDS:
+            return rx.redirect("/login")
         await self.load_recipes_list()
         self.chat_history = self.load_history()
 
@@ -122,22 +122,22 @@ class State(rx.State):
 
         # Save to Firebase after the response is complete
         if original_question and answer:  # Ensure there's an question + answer to save
-            ref = db.reference(CHAT_HISTORY_KEY)
+            ref = db.reference(USERS_KEY + "/" + self.user.uid + "/" + CHAT_HISTORY_KEY)
 
             try:
                 # TODO look further into tx issues, or how to deal with potential corruption?
-                ref.push().set(json.dumps({
+                ref.push().set({
                     "parts": [
                         {"text": original_question},
                     ],
                     "role": "user",
-                }))
-                ref.push().set(json.dumps({
+                })
+                ref.push().set({
                     "parts": [
                         {"text": answer},
                     ],
                     "role": "model",
-                }))
+                })
             except Exception as e:
                 logging.error(f"Error saving chatHistory: {e}", exc_info=True)
 
@@ -177,14 +177,15 @@ class State(rx.State):
             "instructions": instructions,
             "imageUrl": image_url,
             "updatedAt": updatedAt,
+            "uid": self.user.uid,
         }
-        ref = db.reference(FAVOURITES_KEY)
+        ref = db.reference(RECIPES_KEY)
 
         try:
             # Push recipe entry to Firebase
             new_ref = ref.push()
             recipe_entry["id"] = new_ref.key
-            new_ref.set(json.dumps(recipe_entry))
+            new_ref.set(recipe_entry)
             log.info("Recipe saved successfully!")  # Debugging
         except Exception as e:
             log.error(f"Error saving recipe: {e}", exc_info=True)
@@ -283,18 +284,15 @@ class State(rx.State):
 
     @staticmethod
     def load_favourite_recipe(recipe_id: str) -> Recipe | None:
-        ref = db.reference(FAVOURITES_KEY + "/" + recipe_id)
+        ref = db.reference(f"{RECIPES_KEY}/{recipe_id}")
         recipe_data = ref.get()
-        if recipe_data:
-            return State.parse_recipe(recipe_data)
-        return None
+        return State.parse_recipe(recipe_data) if recipe_data else None
 
     @staticmethod
-    def parse_recipe(recipe_data):
-        recipe_json = json.loads(recipe_data)
-        return Recipe(id=recipe_json["id"], title=recipe_json["title"], image_url=recipe_json["imageUrl"],
-                      summary=recipe_json["summary"], ingredients=recipe_json["ingredients"],
-                      instructions=recipe_json["instructions"])
+    def parse_recipe(recipe_data) -> Recipe:
+        return Recipe(id=recipe_data.get("id"), title=recipe_data.get("title"), image_url=recipe_data.get("imageUrl"),
+                      summary=recipe_data.get("summary"), ingredients=recipe_data.get("ingredients"),
+                      instructions=recipe_data.get("instructions"))
 
     def toggle_view(self):
         """Toggle between showing ingredients and instructions."""
@@ -303,13 +301,34 @@ class State(rx.State):
     async def load_recipes_list(self):
         self.favourites_recipes_list = self.load_favourite_recipes()
 
-    @staticmethod
-    def load_favourite_recipes() -> list[Recipe] | None:
-        ref = db.reference(FAVOURITES_KEY)
-        favourites = list(ref.get().items())
-        if len(favourites) == 0:
+    def load_favourite_recipes(self) -> list[Recipe] | None:
+        ref = db.reference(RECIPES_KEY)
+        if self.user is None:
+            favourites = ref.get()
+        else:
+            favourites = ref.order_by_child("uid").equal_to(self.user.uid).get()
+        if not favourites:
             return None
-        return [State.parse_recipe(recipe_entry[1]) for recipe_entry in favourites]
+        return [State.parse_recipe(recipe_entry) for recipe_entry in favourites.values()]
 
     async def redirect_to_recipe(self, id: str):
         return rx.redirect(f"/recipe?id={id}")
+
+    @rx.event
+    async def login_sign_up(self) -> None:
+        if self.user_email is None:
+            raise Exception("User is not set")
+        auth_service = AuthService()
+        fixed_password = "-------"
+        self.user = User.from_user_record(auth_service.sign_in_email_password(self.user_email, fixed_password))
+        # Sign up
+        if not self.user:
+            self.user = User.from_user_record(auth_service.create_user(self.user_email, fixed_password))
+        self.redirect_to = "/recipes"
+
+    @rx.event
+    async def logout(self):
+        self.user = None
+        self.user_email = None
+        self.redirect_to = None
+        return rx.redirect("/login")
