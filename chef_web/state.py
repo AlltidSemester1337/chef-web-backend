@@ -308,7 +308,7 @@ class State(rx.State):
         else:
             favourites = ref.order_by_child("uid").equal_to(self.user.uid).get()
         if not favourites:
-            return None
+            return []
         return [State.parse_recipe(recipe_entry) for recipe_entry in favourites.values()]
 
     async def redirect_to_recipe(self, id: str):

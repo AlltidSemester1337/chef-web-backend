@@ -122,6 +122,7 @@ def chat() -> rx.Component:
             lambda messages: qa(messages[0], messages[1]),
         ),
         rx.script("setTimeout(() => {window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}, 1000)"),
+        margin_y="2em"
     )
 
 
