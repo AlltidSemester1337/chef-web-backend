@@ -262,7 +262,7 @@ def recipe_list_item(id: str, title: str) -> rx.Component:
 def login() -> rx.Component:
     return rx.box(rx.cond(
         State.redirect_to,  # If redirect URL is set
-        rx.script(f"window.location.href = '{State.redirect_to}';"),  # Perform client-side redirect
+        rx.script(f"window.location.href = '/chef-web/{State.redirect_to}';"),  # Perform client-side redirect
         rx.box(navbar(), rx.center(rx.card(
             rx.vstack(
                 rx.center(
