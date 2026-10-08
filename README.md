@@ -1,11 +1,13 @@
 # Chef Web backend
 
+> [!IMPORTANT]
+> **This project is deprecated and archived.** The Reflex web app is no longer deployed.
+> Development continues in [chef-backend](https://github.com/AlltidSemester1337/chef-backend)
+> (Python/FastAPI backend and MCP server) and the Android app
+> [chef](https://github.com/AlltidSemester1337/chef).
+
 Web version of [app](https://github.com/AlltidSemester1337/chef) built using reflex.dev, deployed as backend only on
 cloud run (frontend hosted statically on WP web server).
-
-Try it live at [demo](https://humlekotte.nu/chef-web/recipes)!
-Registration for closed beta testing can be requested by contacting author, see "Support, feature request, question etc"
-section at the bottom.
 
 A personal cooking assistant app (Reflex.dev) to suggest recipes for cooking. Built on vertexai chat and
 firebase. Requires integration towards vertexai using SA in order to run.
